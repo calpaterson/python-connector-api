@@ -84,14 +84,18 @@ def handle_proxy(func):
 
 @handle_ssl
 @handle_proxy
-def get_request(*args, **kwargs):
-    return requests.get(*args, **kwargs)
+def get_request(*args, session=None, **kwargs):
+    if session is None:
+        session = requests
+    return session.get(*args, **kwargs)
 
 
 @handle_ssl
 @handle_proxy
-def post_request(*args, **kwargs):
-    return requests.post(*args, **kwargs)
+def post_request(*args, session=None, **kwargs):
+    if session is None:
+        session = requests
+    return session.post(*args, **kwargs)
 
 
 def create_path(_file):
@@ -102,15 +106,15 @@ def create_path(_file):
 
 
 def query_api(url, username, password, request_type="GET", timeout_seconds=300,
-              headers={'Accept': 'application/octet-stream'}):
+              headers={'Accept': 'application/octet-stream'}, session=None):
     if request_type.lower() == "get":
         _logger.debug("Calling URL: {} (username = {})".format(url, username))
-        response = get_request(url, timeout=timeout_seconds, auth=(username, password), headers=headers)
+        response = get_request(url, timeout=timeout_seconds, auth=(username, password), headers=headers, session=session)
     elif request_type.lower() == "post":
         url, data = parse_url_for_post_data(url)
         _logger.debug("Calling URL: {} (username = {})".format(url, username))
         headers['Content-Type'] = "text/plain"
-        response = post_request(url, timeout=timeout_seconds, auth=(username, password), headers=headers, data=data)
+        response = post_request(url, timeout=timeout_seconds, auth=(username, password), headers=headers, data=data, sess=session)
     else:
         raise ValueError('Unknown request_type: {}.'.format(request_type))
 
@@ -122,21 +126,21 @@ def query_api(url, username, password, request_type="GET", timeout_seconds=300,
 
 
 @deprecated("Do not programmatically rely on user features since the returned keys can change over time.")
-def query_user_features(username, password):
+def query_user_features(username, password, session=None):
     """Get user features"""
-    response = get_request(DEFAULT_API_BASE_URL + '/user_stats_json', auth=(username, password))
+    response = get_request(DEFAULT_API_BASE_URL + '/user_stats_json', auth=(username, password), session=session)
     if response.status_code != requests.codes.ok:
         exc = API_EXCEPTIONS[response.status_code]
         raise exc(response.text)
     return extract_user_statistics(response)
 
 
-def query_user_limits(username, password):
+def query_user_limits(username, password, session=None):
     """Get users usage and limits
 
     returns {limit[name]: (current_count, limit[value]) for limit in defined_limits}
     """
-    response = get_request(DEFAULT_API_BASE_URL + '/user_stats_json', auth=(username, password))
+    response = get_request(DEFAULT_API_BASE_URL + '/user_stats_json', auth=(username, password), session=session)
     if response.status_code != requests.codes.ok:
         exc = API_EXCEPTIONS[response.status_code]
         raise exc(response.text)
