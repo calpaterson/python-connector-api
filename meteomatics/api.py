@@ -158,7 +158,7 @@ def convert_time_series_binary_response_to_df(bin_input, coordinate_list, parame
 
 
 def query_station_list(username, password, source=None, parameters=None, startdate=None, enddate=None, location=None,
-                       api_base_url=DEFAULT_API_BASE_URL, request_type='GET', elevation=None, id=None):
+                       api_base_url=DEFAULT_API_BASE_URL, request_type='GET', elevation=None, id=None, session=None):
     """Function to query available stations in API
     source as string
     parameters as list
@@ -173,7 +173,7 @@ def query_station_list(username, password, source=None, parameters=None, startda
         api_base_url=api_base_url,
         urlParams="&".join(["{}={}".format(k, v) for k, v in url_params_dict.items()])
     )
-    response = query_api(url, username, password, request_type=request_type)
+    response = query_api(url, username, password, request_type=request_type, session=session)
 
     sl = pd.read_csv(StringIO(response.text), sep=";")
     sl['lat'] = sl['Location Lat,Lon'].apply(lambda x: float(x.split(",")[0]))
@@ -186,7 +186,7 @@ def query_station_list(username, password, source=None, parameters=None, startda
 def query_station_timeseries(startdate, enddate, interval, parameters, username, password, model='mix-obs',
                              latlon_tuple_list=None, wmo_ids=None, mch_ids=None, general_ids=None, hash_ids=None,
                              metar_ids=None, temporal_interpolation=None, spatial_interpolation=None, on_invalid=None,
-                             api_base_url=DEFAULT_API_BASE_URL, request_type='GET', na_values=NA_VALUES):
+                             api_base_url=DEFAULT_API_BASE_URL, request_type='GET', na_values=NA_VALUES, session=None):
     """Retrieve a time series from the Meteomatics Weather API.
     Requested can be by WMO ID, Metar ID or coordinates.
     Start and End dates have to be in UTC.
@@ -216,7 +216,7 @@ def query_station_timeseries(startdate, enddate, interval, parameters, username,
     )
 
     headers = {'Accept': 'text/csv'}
-    response = query_api(url, username, password, request_type=request_type, headers=headers)
+    response = query_api(url, username, password, request_type=request_type, headers=headers, session=session)
     coordinates_list = coordinates.split("+")
     return convert_time_series_binary_response_to_df(response.content, coordinates_list, parameters,
                                                      station=True, na_values=na_values)
@@ -225,7 +225,7 @@ def query_station_timeseries(startdate, enddate, interval, parameters, username,
 def query_special_locations_timeseries(startdate, enddate, interval, parameters, username, password, model='mix',
                                        postal_codes=None, temporal_interpolation=None, spatial_interpolation=None,
                                        on_invalid=None, api_base_url=DEFAULT_API_BASE_URL, request_type='GET',
-                                       na_values=NA_VALUES):
+                                       na_values=NA_VALUES, session=None):
     """Retrieve a time series from the Meteomatics Weather API.
     Requested locations can also be specified by Postal Codes;
         Input as dictionary, e.g.: postal_codes={'DE': [71679,70173], ...}.
@@ -255,7 +255,7 @@ def query_special_locations_timeseries(startdate, enddate, interval, parameters,
     )
 
     headers = {'Accept': 'text/csv'}
-    response = query_api(url, username, password, request_type=request_type, headers=headers)
+    response = query_api(url, username, password, request_type=request_type, headers=headers, session=None)
     coordinates_list = coordinates.split("+")
     return convert_time_series_binary_response_to_df(response.content, coordinates_list, parameters, station=True,
                                                      na_values=na_values)
@@ -263,7 +263,7 @@ def query_special_locations_timeseries(startdate, enddate, interval, parameters,
 
 def query_time_series(coordinate_list, startdate, enddate, interval, parameters, username, password, model=None,
                       ens_select=None, interp_select=None, on_invalid=None, api_base_url=DEFAULT_API_BASE_URL,
-                      request_type='GET', cluster_select=None, na_values=NA_VALUES,
+                      request_type='GET', cluster_select=None, na_values=NA_VALUES, session=None,
                       **kwargs):
     """Retrieve a time series from the Meteomatics Weather API.
     Start and End dates have to be in UTC.
@@ -296,7 +296,7 @@ def query_time_series(coordinate_list, startdate, enddate, interval, parameters,
         urlParams="&".join(["{}={}".format(k, v) for k, v in url_params.items()])
     )
 
-    response = query_api(url, username, password, request_type=request_type)
+    response = query_api(url, username, password, request_type=request_type, session=session)
     df = convert_time_series_binary_response_to_df(response.content, coordinate_list, extended_params,
                                                    na_values=na_values)
 
@@ -305,7 +305,7 @@ def query_time_series(coordinate_list, startdate, enddate, interval, parameters,
 
 def query_grid(startdate, parameter_grid, lat_N, lon_W, lat_S, lon_E, res_lat, res_lon, username, password, model=None,
                ens_select=None, interp_select=None, api_base_url=DEFAULT_API_BASE_URL, request_type='GET',
-               na_values=NA_VALUES,
+               na_values=NA_VALUES, session=None,
                **kwargs):
     # interpret time as UTC
     startdate = sanitize_datetime(startdate)
@@ -326,12 +326,13 @@ def query_grid(startdate, parameter_grid, lat_N, lon_W, lat_S, lon_E, res_lat, r
         urlParams="&".join(["{}={}".format(k, v) for k, v in url_params.items()])
     )
 
-    response = query_api(url, username, password, request_type=request_type)
+    response = query_api(url, username, password, request_type=request_type, session=session)
     return convert_grid_binary_response_to_df(response.content, parameter_grid, na_values=na_values)
 
 
 def query_grid_unpivoted(valid_dates, parameters, lat_N, lon_W, lat_S, lon_E, res_lat, res_lon, username, password,
-                         model=None, ens_select=None, interp_select=None, request_type='GET', na_values=NA_VALUES):
+                         model=None, ens_select=None, interp_select=None, request_type='GET', na_values=NA_VALUES,
+                         session=None):
     idxcols = ['valid_date', 'lat', 'lon']
     vd_dfs = []
 
@@ -340,7 +341,7 @@ def query_grid_unpivoted(valid_dates, parameters, lat_N, lon_W, lat_S, lon_E, re
         for parameter in parameters:
 
             dmo = query_grid(valid_date, parameter, lat_N, lon_W, lat_S, lon_E, res_lat, res_lon, username, password,
-                             model, ens_select, interp_select, request_type=request_type, na_values=na_values)
+                             model, ens_select, interp_select, request_type=request_type, na_values=na_values, session=session)
 
             df = pd.melt(dmo.reset_index(), id_vars='lat', var_name='lon', value_name=parameter)
             df['valid_date'] = valid_date
@@ -369,7 +370,8 @@ def query_grid_unpivoted(valid_dates, parameters, lat_N, lon_W, lat_S, lon_E, re
 
 def query_grid_timeseries(startdate, enddate, interval, parameters, lat_N, lon_W, lat_S, lon_E,
                           res_lat, res_lon, username, password, model=None, ens_select=None, interp_select=None,
-                          on_invalid=None, api_base_url=DEFAULT_API_BASE_URL, request_type='GET', na_values=NA_VALUES):
+                          on_invalid=None, api_base_url=DEFAULT_API_BASE_URL, request_type='GET', na_values=NA_VALUES,
+                          session=None):
     """Retrieve a grid time series from the Meteomatics Weather API.
        Start and End dates have to be in UTC.
        Returns a Pandas `DataFrame` with a `DateTimeIndex`.
@@ -401,7 +403,7 @@ def query_grid_timeseries(startdate, enddate, interval, parameters, lat_N, lon_W
         urlParams="&".join(["{}={}".format(k, v) for k, v in url_params.items()])
     )
 
-    response = query_api(url, username, password, request_type=request_type)
+    response = query_api(url, username, password, request_type=request_type, session=session)
 
     lats = arange(lat_S, lat_N, res_lat)
     lons = arange(lon_W, lon_E, res_lon)
@@ -414,7 +416,8 @@ def query_grid_timeseries(startdate, enddate, interval, parameters, lat_N, lon_W
 
 def query_polygon(latlon_tuple_lists, startdate, enddate, interval, parameters, aggregation, username,
                   password, operator=None, model=None, ens_select=None, interp_select=None, on_invalid=None,
-                  api_base_url=DEFAULT_API_BASE_URL, request_type='GET', cluster_select=None, **kwargs):
+                  api_base_url=DEFAULT_API_BASE_URL, request_type='GET', cluster_select=None, session=None,
+                  **kwargs):
     """Retrieve a time series from the Meteomatics Weather API for a selected polygon.
     Start and End dates have to be in UTC.
     Returns a Pandas `DataFrame` with a `DateTimeIndex`.
@@ -449,13 +452,14 @@ def query_polygon(latlon_tuple_lists, startdate, enddate, interval, parameters, 
         urlParams="&".join(["{}={}".format(k, v) for k, v in url_params_dict.items()])
     )
 
-    response = query_api(url, username, password, request_type=request_type)
+    response = query_api(url, username, password, request_type=request_type, session=session)
     df = convert_polygon_response_to_df(response.text)
     return df
 
 
 def query_lightnings(startdate, enddate, lat_N, lon_W, lat_S, lon_E, username, password,
-                     api_base_url=DEFAULT_API_BASE_URL, request_type='GET', model='mix'):
+                     api_base_url=DEFAULT_API_BASE_URL, request_type='GET', model='mix',
+                     session=None):
     """Queries lightning strokes in the specified area during the specified time via the Meteomatics API.
     Returns a Pandas 'DataFrame'.
     request_type is one of 'GET'/'POST'
@@ -477,14 +481,14 @@ def query_lightnings(startdate, enddate, lat_N, lon_W, lat_S, lon_E, username, p
     )
 
     headers = {'Accept': 'text/csv'}
-    response = query_api(url, username, password, request_type=request_type, headers=headers)
+    response = query_api(url, username, password, request_type=request_type, headers=headers, session=session)
 
     return convert_lightning_response_to_df(response.text)
 
 
 def query_netcdf(filename, startdate, enddate, interval, parameter_netcdf, lat_N, lon_W, lat_S, lon_E, res_lat, res_lon,
                  username, password, model=None, ens_select=None, interp_select=None,
-                 api_base_url=DEFAULT_API_BASE_URL, request_type='GET', cluster_select=None):
+                 api_base_url=DEFAULT_API_BASE_URL, request_type='GET', cluster_select=None, session=None):
     """Queries a netCDF file form the Meteomatics API and stores it in filename.
     request_type is one of 'GET'/'POST'
     """
@@ -512,7 +516,7 @@ def query_netcdf(filename, startdate, enddate, interval, parameter_netcdf, lat_N
     )
 
     headers = {'Accept': 'application/netcdf'}
-    response = query_api(url, username, password, request_type=request_type, headers=headers)
+    response = query_api(url, username, password, request_type=request_type, headers=headers, session=session)
 
     # Check if target directory exists
     create_path(filename)
@@ -527,7 +531,7 @@ def query_netcdf(filename, startdate, enddate, interval, parameter_netcdf, lat_N
 
 
 def query_init_date(startdate, enddate, interval, parameter, username, password, model,
-                    api_base_url=DEFAULT_API_BASE_URL):
+                    api_base_url=DEFAULT_API_BASE_URL, session=None):
     # set time zone info to UTC if necessary
     startdate = sanitize_datetime(startdate)
     enddate = sanitize_datetime(enddate)
@@ -540,7 +544,7 @@ def query_init_date(startdate, enddate, interval, parameter, username, password,
                                     model=model, interval_string=interval_string, parameter=parameter)
 
     headers = {'Accept': 'text/csv'}
-    response = query_api(url, username, password, request_type='GET', headers=headers)
+    response = query_api(url, username, password, request_type='GET', headers=headers, session=session)
 
     try:
         df = pd.read_csv(
@@ -560,12 +564,13 @@ def query_init_date(startdate, enddate, interval, parameter, username, password,
     return df
 
 
-def query_available_time_ranges(parameters, username, password, model, api_base_url=DEFAULT_API_BASE_URL):
+def query_available_time_ranges(parameters, username, password, model, api_base_url=DEFAULT_API_BASE_URL,
+                                session=None):
     url = AVAILABLE_TIME_RANGES_TEMPLATE.format(api_base_url=api_base_url,
                                                 model=model, parameters=",".join(parameters))
 
     headers = {'Accept': 'text/csv'}
-    response = query_api(url, username, password, request_type='GET', headers=headers)
+    response = query_api(url, username, password, request_type='GET', headers=headers, session=session)
 
     try:
         df = pd.read_csv(
@@ -585,7 +590,7 @@ def query_available_time_ranges(parameters, username, password, model, api_base_
 
 def query_grid_png(filename, startdate, parameter_grid, lat_N, lon_W, lat_S, lon_E, res_lat, res_lon, username,
                    password, model=None, ens_select=None, interp_select=None, api_base_url=DEFAULT_API_BASE_URL,
-                   request_type='GET'):
+                   request_type='GET', session=None):
     """Gets a png image generated by the Meteomatics API from grid data (see method query_grid)
     and saves it to the specified filename.
     request_type is one of 'GET'/'POST'
@@ -621,7 +626,7 @@ def query_grid_png(filename, startdate, parameter_grid, lat_N, lon_W, lat_S, lon
     )
 
     headers = {'Accept': 'image/png'}
-    response = query_api(url, username, password, request_type=request_type, headers=headers)
+    response = query_api(url, username, password, request_type=request_type, headers=headers, session=session)
 
     # save to the specified filename
     with open(filename, 'wb') as f:
@@ -634,7 +639,7 @@ def query_grid_png(filename, startdate, parameter_grid, lat_N, lon_W, lat_S, lon
 
 def query_png_timeseries(prefixpath, startdate, enddate, interval, parameter, lat_N, lon_W, lat_S, lon_E, res_lat,
                          res_lon, username, password, model=None, ens_select=None, interp_select=None,
-                         api_base_url=DEFAULT_API_BASE_URL, request_type='GET'):
+                         api_base_url=DEFAULT_API_BASE_URL, request_type='GET', session=None):
     """Queries a series of png's for the requested time period and area from the Meteomatics API. The retrieved png's
     are saved to the directory prefixpath.
     request_type is one of 'GET'/'POST'
@@ -654,7 +659,7 @@ def query_png_timeseries(prefixpath, startdate, enddate, interval, parameter, la
         # query base method
         query_grid_png(filename, this_date, parameter, lat_N, lon_W, lat_S, lon_E, res_lat,
                        res_lon, username, password, model, ens_select, interp_select,
-                       api_base_url, request_type=request_type)
+                       api_base_url, request_type=request_type, session=session)
 
         this_date = this_date + interval
 
